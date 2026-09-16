@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elite Striker — Performance App</title>
+<style>
+  :root{
+    --green:#2ecc71; --yellow:#f1c40f; --red:#e74c3c;
+    --bg:#0f1115; --card:#181c24; --text:#eef1f6; --muted:#8b93a3; --accent:#4f8cff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);}
+  header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #232838;}
+  header h1{font-size:18px;margin:0;}
+  #userBadge{font-size:12px;color:var(--muted);}
+  nav{display:flex;background:var(--card);border-bottom:1px solid #232838;}
+  nav button{flex:1;padding:14px 6px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;}
+  nav button.active{color:var(--accent);border-bottom:2px solid var(--accent);}
+  main{padding:18px;max-width:520px;margin:0 auto;}
+  .tab{display:none;} .tab.active{display:block;}
+  .card{background:var(--card);border-radius:14px;padding:18px;margin-bottom:14px;}
+  .semaforo{width:120px;height:120px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;transition:.3s;}
+  .semaforo.green{background:radial-gradient(circle,var(--green),#1e9e57);}
+  .semaforo.yellow{background:radial-gradient(circle,var(--yellow),#c99a0c);}
+  .semaforo.red{background:radial-gradient(circle,var(--red),#b13327);}
+  .semaforo.blocked{background:#2a2f3d;color:var(--muted);}
+  .metric-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:4px 0;}
+  input, select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #2a2f3d;background:#10131a;color:var(--text);}
+  label{font-size:12px;color:var(--muted);}
+  button.primary{width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;margin-top:10px;cursor:pointer;}
+  .ex-item{padding:12px;border:1px solid #232838;border-radius:10px;margin-bottom:8px;}
+  .ex-item .tag{font-size:11px;color:var(--accent);}
+  #timerDisplay{font-size:42px;text-align:center;margin:14px 0;font-variant-numeric:tabular-nums;}
+  .timer-controls{display:flex;gap:8px;}
+  .timer-controls button{flex:1;padding:10px;border-radius:8px;border:1px solid #2a2f3d;background:#10131a;color:var(--text);cursor:pointer;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;}
+  .modal-backdrop.active{display:flex;}
+  .modal{background:var(--card);padding:22px;border-radius:14px;width:90%;max-width:360px;text-align:center;}
+  .rpe-scale{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:14px 0;}
+  .rpe-scale button{width:38px;height:38px;border-radius:8px;border:1px solid #2a2f3d;background:#10131a;color:var(--text);cursor:pointer;}
+  .rpe-scale button.selected{background:var(--accent);border-color:var(--accent);}
+  .heatzone{fill:var(--accent);opacity:.35;}
+  .notice{background:#1f2937;border-left:3px solid var(--accent);padding:10px 12px;border-radius:6px;font-size:13px;margin-bottom:10px;}
+  video{width:100%;border-radius:10px;background:#000;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚽ Elite Striker</h1>
+  <span id="userBadge">Sin perfil</span>
+</header>
+
+<nav>
+  <button data-tab="dashboard" class="active">Readiness</button>
+  <button data-tab="sesion">Sesión</button>
+  <button data-tab="tactica">Táctica</button>
+  <button data-tab="nutricion">Nutrición</button>
+</nav>
+
+<main>
+
+  <!-- ONBOARDING (se muestra si no hay usuario) -->
+  <div id="onboarding" class="card">
+    <h3>Crear perfil</h3>
+    <label>Nombre</label><input id="ob_name" placeholder="Tu nombre">
+    <label>Posición</label>
+    <select id="ob_position">
+      <option>Portero</option><option>Central</option><option>Lateral</option>
+      <option>Mediocampista</option><option>Extremo</option><option>Delantero</option>
+    </select>
+    <label>Peso corporal (kg)</label><input id="ob_weight" type="number" placeholder="70">
+    <label>Día de partido</label>
+    <select id="ob_matchday">
+      <option>Saturday</option><option>Sunday</option><option>Friday</option>
+    </select>
+    <button class="primary" onclick="createProfile()">Crear</button>
+  </div>
+
+  <!-- TAB: DASHBOARD -->
+  <section id="tab-dashboard" class="tab active">
+    <div class="card" id="wellnessCard">
+      <h3>Wellness de hoy</h3>
+      <label>Horas de sueño</label><input id="w_sleep" type="number" step="0.5" placeholder="7.5">
+      <label>Dolor muscular (1-10)</label><input id="w_soreness" type="number" min="1" max="10" placeholder="3">
+      <label>Estrés (1-10)</label><input id="w_stress" type="number" min="1" max="10" placeholder="3">
+      <button class="primary" onclick="submitWellness()">Guardar wellness</button>
+    </div>
+
+    <div class="card" id="readinessCard" style="text-align:center;">
+      <div id="semaforo" class="semaforo blocked">Sin datos</div>
+      <div id="readinessDetail"></div>
+    </div>
+  </section>
+
+  <!-- TAB: SESION -->
+  <section id="tab-sesion" class="tab">
+    <div class="card">
+      <h3>Ejercicios de hoy (según posición)</h3>
+      <div id="exerciseList"></div>
+    </div>
+    <div class="card" id="playerCard" style="display:none;">
+      <h4 id="exName"></h4>
+      <video id="exVideo" controls></video>
+      <div id="timerDisplay">00:00</div>
+      <div class="timer-controls">
+        <button onclick="timerStart()">▶️ Iniciar</button>
+        <button onclick="timerPause()">⏸️ Pausar</button>
+        <button onclick="timerReset()">⏹️ Reiniciar</button>
+      </div>
+      <button class="primary" onclick="finishSession()">Terminar sesión</button>
+    </div>
+  </section>
+
+  <!-- TAB: TACTICA -->
+  <section id="tab-tactica" class="tab">
+    <div class="card">
+      <h3>Pizarra táctica — mapa de calor por posición</h3>
+      <p class="notice">Zonas sugeridas de posicionamiento para generar superioridad numérica según tu posición.</p>
+      <svg viewBox="0 0 300 450" width="100%" style="background:#0d3d1f;border-radius:10px;">
+        <rect x="10" y="10" width="280" height="430" fill="none" stroke="#fff" stroke-width="2"/>
+        <line x1="10" y1="225" x2="290" y2="225" stroke="#fff" stroke-width="1"/>
+        <circle cx="150" cy="225" r="35" fill="none" stroke="#fff" stroke-width="1"/>
+        <g id="heatzones"></g>
+      </svg>
+      <div id="tacticaNota" class="notice" style="margin-top:10px;"></div>
+    </div>
+  </section>
+
+  <!-- TAB: NUTRICION -->
+  <section id="tab-nutricion" class="tab">
+    <div class="card">
+      <h3>Nutrición reactiva</h3>
+      <div id="nutritionBox">Registra una sesión para ver recomendaciones.</div>
+      <button class="primary" onclick="checkNutrition()">Revisar sugerencia de hoy</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- MODAL RPE (popup obligatorio Borg) -->
+<div class="modal-backdrop" id="rpeModal">
+  <div class="modal">
+    <h3>¿Qué tan dura fue la sesión?</h3>
+    <p style="color:var(--muted);font-size:13px;">Escala de Borg (1 = muy fácil, 10 = esfuerzo máximo)</p>
+    <div class="rpe-scale" id="rpeScale"></div>
+    <button class="primary" onclick="submitRPE()">Confirmar</button>
+  </div>
+</div>
+
+<script>
+const API = "";
+let state = { userId: null, position: null, timerSeconds: 0, timerHandle: null, currentExercise: null, selectedRPE: null, sessionDuration: 0 };
+
+// -------- Navegación de tabs --------
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "tactica") renderTactica();
+  });
+});
+
+// -------- Perfil --------
+async function createProfile(){
+  const body = {
+    name: document.getElementById("ob_name").value || "Jugador",
+    position: document.getElementById("ob_position").value,
+    body_weight_kg: parseFloat(document.getElementById("ob_weight").value) || 70,
+    match_day: document.getElementById("ob_matchday").value
+  };
+  const r = await fetch("/api/profile", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+  const data = await r.json();
+  state.userId = data.user_id;
+  state.position = body.position;
+  localStorage.setItem("es_user_id", state.userId);
+  localStorage.setItem("es_position", state.position);
+  document.getElementById("onboarding").style.display = "none";
+  document.getElementById("userBadge").textContent = body.name + " · " + body.position;
+  loadDashboard();
+  loadExercises();
+}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+// -------- Wellness + Dashboard --------
+async function submitWellness(){
+  const body = {
+    user_id: state.userId, date: todayStr(),
+    sleep_hrs: parseFloat(document.getElementById("w_sleep").value),
+    muscle_soreness: parseInt(document.getElementById("w_soreness").value),
+    stress: parseInt(document.getElementById("w_stress").value)
+  };
+  await fetch("/api/wellness", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+  loadDashboard();
+  loadExercises();
+}
+
+async function loadDashboard(){
+  if(!state.userId) return;
+  const r = await fetch(`/api/dashboard/${state.userId}?date=${todayStr()}`);
+  const d = await r.json();
+  const el = document.getElementById("semaforo");
+  const detail = document.getElementById("readinessDetail");
+  if(d.blocked){
+    el.className = "semaforo blocked";
+    el.textContent = "Bloqueado";
+    detail.innerHTML = `<p class="notice">${d.reason}</p>`;
+    return;
+  }
+  el.className = "semaforo " + d.semaphore;
+  el.textContent = d.semaphore === "green" ? "Óptimo" : d.semaphore === "yellow" ? "Precaución" : "Fatiga";
+  detail.innerHTML = `
+    <div class="metric-row"><span>Score readiness</span><span>${d.score}/100</span></div>
+    <div class="metric-row"><span>ACWR</span><span>${d.acwr.acwr} ${d.acwr.risk_zone ? "⚠️ riesgo" : ""}</span></div>
+    <div class="metric-row"><span>Carga aguda (7d)</span><span>${d.acwr.acute_load_7d}</span></div>
+    <div class="metric-row"><span>Carga crónica prom. (28d)</span><span>${d.acwr.chronic_weekly_avg_28d}</span></div>
+  `;
+}
+
+// -------- Ejercicios / Sesión --------
+async function loadExercises(){
+  if(!state.userId) return;
+  const r = await fetch(`/api/exercises?position=${state.position}`);
+  const list = await r.json();
+  const box = document.getElementById("exerciseList");
+  box.innerHTML = list.map(e => `
+    <div class="ex-item">
+      <div class="tag">${e.type} · impacto ${e.load_impact}/10</div>
+      <strong>${e.name}</strong><br>
+      <button style="margin-top:6px;" onclick='openExercise(${JSON.stringify(e).replace(/'/g,"&apos;")})'>Iniciar</button>
+    </div>
+  `).join("");
+}
+
+function openExercise(ex){
+  state.currentExercise = ex;
+  document.getElementById("playerCard").style.display = "block";
+  document.getElementById("exName").textContent = ex.name;
+  document.getElementById("exVideo").src = "";
+  timerReset();
+}
+
+function timerStart(){
+  if(state.timerHandle) return;
+  state.timerHandle = setInterval(() => {
+    state.timerSeconds++;
+    const m = String(Math.floor(state.timerSeconds/60)).padStart(2,"0");
+    const s = String(state.timerSeconds%60).padStart(2,"0");
+    document.getElementById("timerDisplay").textContent = `${m}:${s}`;
+  }, 1000);
+}
+function timerPause(){ clearInterval(state.timerHandle); state.timerHandle = null; }
+function timerReset(){ timerPause(); state.timerSeconds = 0; document.getElementById("timerDisplay").textContent = "00:00"; }
+
+function finishSession(){
+  timerPause();
+  state.sessionDuration = Math.max(1, Math.round(state.timerSeconds/60));
+  const scale = document.getElementById("rpeScale");
+  scale.innerHTML = "";
+  for(let i=1;i<=10;i++){
+    const b = document.createElement("button");
+    b.textContent = i;
+    b.onclick = () => { state.selectedRPE = i; document.querySelectorAll("#rpeScale button").forEach(x=>x.classList.remove("selected")); b.classList.add("selected"); };
+    scale.appendChild(b);
+  }
+  document.getElementById("rpeModal").classList.add("active");
+}
+
+async function submitRPE(){
+  if(!state.selectedRPE){ alert("Selecciona un valor de 1 a 10"); return; }
+  const body = {
+    user_id: state.userId,
+    exercise_id: state.currentExercise ? state.currentExercise.exercise_id : null,
+    date: todayStr(),
+    duration_mins: state.sessionDuration,
+    rpe_score: state.selectedRPE
+  };
+  const r = await fetch("/api/workouts", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+  const data = await r.json();
+  document.getElementById("rpeModal").classList.remove("active");
+  document.getElementById("playerCard").style.display = "none";
+  state.selectedRPE = null;
+  loadDashboard();
+  if(data.nutrition && data.nutrition.trigger){
+    alert("🍌 " + data.nutrition.message);
+  }
+}
+
+// -------- Táctica --------
+const ZONES = {
+  "Portero": [[150,400,25]],
+  "Central": [[110,300,22],[190,300,22]],
+  "Lateral": [[40,220,20],[260,220,20]],
+  "Mediocampista": [[150,225,30],[100,180,20],[200,180,20]],
+  "Extremo": [[40,100,20],[260,100,20]],
+  "Delantero": [[110,60,22],[190,60,22]]
+};
+function renderTactica(){
+  const g = document.getElementById("heatzones");
+  const zones = ZONES[state.position] || [];
+  g.innerHTML = zones.map(([x,y,r]) => `<circle class="heatzone" cx="${x}" cy="${y}" r="${r}"/>`).join("");
+  document.getElementById("tacticaNota").textContent =
+    `Como ${state.position}, estas zonas maximizan tu superioridad numérica al recibir el balón.`;
+}
+
+// -------- Nutrición --------
+async function checkNutrition(){
+  const r = await fetch(`/api/nutrition/${state.userId}?date=${todayStr()}`);
+  const d = await r.json();
+  document.getElementById("nutritionBox").innerHTML = d.trigger
+    ? `<div class="notice">🍌 ${d.message}</div>`
+    : `<p style="color:var(--muted);">No se detectó una sesión de alta depleción hoy.</p>`;
+}
+
+// -------- Init --------
+(function init(){
+  const savedId = localStorage.getItem("es_user_id");
+  const savedPos = localStorage.getItem("es_position");
+  if(savedId){
+    state.userId = savedId; state.position = savedPos;
+    document.getElementById("onboarding").style.display = "none";
+    document.getElementById("userBadge").textContent = "Jugador · " + savedPos;
+    loadDashboard(); loadExercises();
+  }
+})();
+</script>
+</body>
+</html>

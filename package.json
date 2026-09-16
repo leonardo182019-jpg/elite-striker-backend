@@ -1,0 +1,17 @@
+{
+  "name": "elite-striker-backend",
+  "version": "1.0.0",
+  "description": "Backend de alto rendimiento para Elite Striker: readiness, ACWR, tapering, nutricion reactiva e integraciones wearables.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "seed": "node src/db.js --seed-only"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "cors": "^2.8.5"
+  }
+}
