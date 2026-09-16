@@ -1,0 +1,6 @@
+node_modules/
+elite_striker.db
+elite_striker.db-shm
+elite_striker.db-wal
+server.log
+.env
